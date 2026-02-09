@@ -12,6 +12,6 @@ This repo contains:
 - `REPORT.md` – full writeup (analysis, tables & discussion)
 
 ## How to run
-- clone the repo, open bash in the repo directory
+- clone the repo, open bash in the repo directory and run the below command
 ```bash
 python3 comparision.py
