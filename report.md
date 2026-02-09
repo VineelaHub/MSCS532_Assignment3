@@ -20,77 +20,22 @@ To avoid Python recursion-depth issues, I used an explicit stack and I always pr
 
 **Edge cases handled**
 - Empty list: returns immediately  
-- Already sorted / reverse sorted: deterministic version degrades (as expected), randomized stays near \(O(n \log n)\)  
+- Already sorted / reverse sorted: deterministic version degrades (as expected), randomized stays near (O(n \log n))  
 - Repeated elements: 3-way partition reduces wasted work  
 
 ---
 
 ### 2. Analysis
 
-Let the input size be \(n\). Randomized Quicksort picks the pivot uniformly from the subarray, so every element is equally likely to be the pivot.
+The performance of Randomized Quicksort is determined by the number of element comparisons made during execution. Unlike deterministic Quicksort, the pivot in Randomized Quicksort is chosen uniformly at random from the current subarray. This random selection prevents consistently poor pivot choices.
 
-A clean way to show expected \(O(n \log n)\) is with indicator random variables on comparisons.
+Each pair of elements in the array can be compared at most once during the entire execution of the algorithm. Two elements are compared only if one of them is chosen as the pivot before any other element that lies between them in the sorted order.
 
-#### Key idea
-Quicksort’s running time is dominated by the number of comparisons.
+Because the pivot is selected randomly, the probability that any specific pair of elements is compared is small. When this probability is summed across all possible pairs of elements, the expected total number of comparisons grows proportionally to n log n.
 
-Consider two distinct elements \(x_i\) and \(x_j\) (assume \(i < j\) in sorted order).  
-They get compared at most once during the algorithm, and they are compared only if one of them becomes the first pivot chosen from the set \(\{x_i, x_{i+1}, \dots, x_j\}\).
+Since each comparison takes constant time, the expected running time of Randomized Quicksort is O(n log n). This expected performance holds regardless of the initial ordering of the input array, including sorted, reverse-sorted, or partially ordered inputs.
 
-Define an indicator variable:
-
-\[
-X_{ij} =
-\begin{cases}
-1 & \text{if } x_i \text{ and } x_j \text{ are compared} \\
-0 & \text{otherwise}
-\end{cases}
-\]
-
-Then the total number of comparisons is:
-
-\[
-X = \sum_{i<j} X_{ij}
-\]
-
-So the expected number of comparisons is:
-
-\[
-\mathbb{E}[X] = \sum_{i<j} \mathbb{E}[X_{ij}] = \sum_{i<j} \Pr(X_{ij}=1)
-\]
-
-#### Probability that \(x_i\) and \(x_j\) are compared
-They are compared iff the first pivot chosen from the range \(\{x_i, \dots, x_j\}\) is either \(x_i\) or \(x_j\).  
-There are \((j - i + 1)\) elements in that range, and the pivot is uniform.
-
-\[
-\Pr(X_{ij} = 1) = \frac{2}{j - i + 1}
-\]
-
-So:
-
-\[
-\mathbb{E}[X] = \sum_{i<j} \frac{2}{j - i + 1}
-\]
-
-We can rewrite by grouping on distance \(k = j - i\):
-
-\[
-\mathbb{E}[X] = \sum_{k=1}^{n-1} \sum_{i=1}^{n-k} \frac{2}{k+1}
-= \sum_{k=1}^{n-1} (n-k)\frac{2}{k+1}
-\]
-
-This is bounded by a constant times:
-
-\[
-n \sum_{k=1}^{n-1}\frac{1}{k} = n \cdot H_{n} = O(n\log n)
-\]
-
-So the expected comparisons is \(O(n\log n)\), and therefore the average running time is:
-
-\[
-\boxed{\mathbb{E}[T(n)] = O(n\log n)}
-\]
+As a result, the expected running time of Randomized Quicksort is O(n log n).
 
 ---
 
@@ -140,18 +85,18 @@ I measured time using `time.perf_counter()` and averaged across multiple trials.
 ---
 
 #### Observations
-- **Random arrays:** both versions are generally near \(O(n\log n)\). Random pivot adds slight overhead, so it is not always faster on random data.
+- **Random arrays:** both versions are generally near (O(n\log n)). Random pivot adds slight overhead, so it is not always faster on random data.
 - **Sorted arrays:** deterministic pivot (first element) is consistently slower because partitions become highly unbalanced.
 - **Reverse-sorted arrays:** deterministic Quicksort becomes extremely slow (worst-case behavior). Randomized Quicksort stays fast because it avoids consistently bad pivots.
 - **Repeated values:** 3-way partition helps a lot for both; performance is stable and close.
 
 #### Why the results match theory
-- Deterministic first-pivot Quicksort has a well-known \(O(n^2)\) worst case on sorted/reversed inputs due to unbalanced partitions.
-- Randomization makes it very unlikely to repeatedly pick extreme pivots, so the expected recursion depth stays near \(\log n\), leading to \(O(n\log n)\) expected time.
+- Deterministic first-pivot Quicksort has a well-known (O(n^2)) worst case on sorted/reversed inputs due to unbalanced partitions.
+- Randomization makes it very unlikely to repeatedly pick extreme pivots, so the expected recursion depth stays near (log n), leading to (O(n\log n)) expected time.
 
 #### Small discrepancies
 - Sometimes deterministic wins on random, because random number generation costs time.
-- Python overhead (function calls, list operations) can hide small theoretical differences when \(n\) is not huge.
+- Python overhead (function calls, list operations) can hide small theoretical differences when (n) is not huge.
 
 ---
 
@@ -165,59 +110,28 @@ Supported operations:
 - **Search(key)**: returns value or `None`
 - **Delete(key)**: removes key if present and returns True/False
 
-To reduce collisions, I used a universal hashing style function:
-
-\[
-h(k) = ((a \cdot k + b) \bmod p) \bmod m
-\]
-
-- \(p\) is a large prime
-- \(a\) is chosen from \(\{1, \dots, p-1\}\)
-- \(b\) is chosen from \(\{0, \dots, p-1\}\)
-- \(m\) is the table size
+To reduce collisions, I used a universal hashing style function
 
 For non-integer keys (like strings), I convert the key into a stable integer using a simple polynomial rolling method.
 
 I also implemented dynamic resizing:
-- If load factor \( \alpha > 0.75 \): resize up (double capacity)
-- If load factor \( \alpha < 0.15 \): resize down (halve capacity, but not below a minimum)
+- If load factor ( alpha > 0.75 ): resize up (double capacity)
+- If load factor ( alpha < 0.15 ): resize down (halve capacity, but not below a minimum)
 
 ---
 
 ### 2. Analysis
 
-Let:
-- \(n\) = number of stored elements
-- \(m\) = number of buckets (slots)
-- \(\alpha = \frac{n}{m}\) = load factor
+Let n represent the number of stored elements and m represent the number of buckets in the hash table. The load factor is defined as the ratio of the number of elements to the number of buckets.
 
-Under simple uniform hashing, each key is equally likely to hash into any bucket, so the expected chain length is about \(\alpha\).
+Under the assumption of simple uniform hashing, each key is equally likely to hash into any bucket. As a result, the expected number of elements in each chain is equal to the load factor.
 
-#### Expected times
-- **Search (successful):** expected \(O(1 + \alpha)\)
-- **Search (unsuccessful):** expected \(O(1 + \alpha)\)
-- **Insert:** expected \(O(1 + \alpha)\) (find spot/update + append)
-- **Delete:** expected \(O(1 + \alpha)\)
-
-So if \(\alpha\) is kept bounded (like \(\le 0.75\)), operations stay expected constant time.
-
----
-
-### Load factor impact
-- As \(\alpha\) increases, average chain length grows, so each operation scans more elements.
-- If \(\alpha\) becomes large (say 5, 10, 20...), chaining still works, but performance starts to feel linear in \(\alpha\).
-
----
-
-### Strategy to maintain low load factor
-My solution uses dynamic resizing:
-- When \(\alpha\) exceeds a threshold, allocate a larger table and rehash everything.
-- Resizing is expensive in that moment, but amortized over many inserts, the expected per-insert cost stays near constant.
+The expected time complexity for insert, search, and delete operations is proportional to one plus the load factor. When the load factor is kept bounded through resizing, all operations run in expected constant time.
 
 ---
 
 ### Empirical sanity check
-In my test run, the load factor stayed ~0.49 due to resizing, and average search time stayed around microseconds even as \(n\) increased.
+In my test run, the load factor stayed ~0.49 due to resizing, and average search time stayed around microseconds even as (n) increased.
 
 **Table 2**  
 *Hash table performance under resizing (chaining & universal hash).*
